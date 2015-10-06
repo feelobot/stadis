@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/codegangsta/cli"
 	"github.com/quipo/statsd"
 	"gopkg.in/redis.v3"
@@ -20,15 +21,21 @@ func main() {
 			Value: "localhost:6379",
 			Usage: "host:port of redis servier",
 		},
+		cli.StringFlag{
+			Name:  "statsd-host, s",
+			Value: "localhost:8125",
+			Usage: "host:port of statsd servier",
+		},
+		cli.StringFlag{
+			Name:   "prefix,p",
+			Usage:  "host:port of redis servier",
+			EnvVar: "HOSTNAME",
+		},
 	}
 	app.Action = func(c *cli.Context) {
-		collect()
+		getStats(c.String("redis-host"))
 	}
 	app.Run(os.Args)
-}
-
-func collect() {
-	info := getStats(addrs)
 }
 
 func getStats(addrs string) string {
@@ -41,6 +48,7 @@ func getStats(addrs string) string {
 	if err != nil {
 		fmt.Println("Error connecting to redis") //possibly send to statsd also
 	}
+	fmt.Println(info)
 	return info
 }
 
@@ -58,5 +66,4 @@ func sendStats() {
 	// buffered: aggregate in memory before flushing
 	stats.Incr("mymetric", 1)
 	stats.Incr("mymetric", 3)
-
 }
