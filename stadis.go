@@ -36,14 +36,21 @@ func main() {
 			Usage:  "host:port of redis servier",
 			EnvVar: "HOSTNAME",
 		},
+		cli.StringFlag{
+			Name:  "interval,i",
+			Usage: "time in milliseconds to periodically check redis",
+			Value: "5000",
+		},
 	}
 	app.Action = func(c *cli.Context) {
 		for {
 			info := getStats(c.String("redis-host"))
 			gauges := parseGauges(info)
-			sendGauges(gauges, c.String("statsd-host"))
+			counters := parseCounters(info)
+			sendStats(c.String("statsd-host"), c.String("prefix"), gauges, counters)
 			color.Yellow("-------------------")
-			time.Sleep(5000 * time.Millisecond)
+			interval, _ := strconv.ParseInt(c.String("interval"), 10, 64)
+			time.Sleep(time.Duration(interval) * time.Millisecond)
 		}
 	}
 	app.Run(os.Args)
@@ -63,22 +70,26 @@ func getStats(addrs string) string {
 	return info
 }
 
-func sendStats() {
-}
-func sendGauges(gauges map[string]int64, statsdHost string) {
-	color.Yellow("-------------------")
-	color.White("GAUGES:")
-	client, err := statsd.NewClient(statsdHost, "test-client")
+func sendStats(statsdHost string, prefix string, gauges map[string]int64, counters map[string]int64) {
+	client, err := statsd.NewClient(statsdHost, "")
 	if err != nil {
 		color.Red("ERROR: can't connect to statsd")
 	}
 	defer client.Close()
+	sendGauges(client, gauges)
+	sendCounters(client, counters)
+}
+
+func sendGauges(client statsd.Statter, gauges map[string]int64) {
 	for gauge, value := range gauges {
 		client.Gauge(gauge, value, 1.0)
 	}
-
 }
-func statify(info string) {
+
+func sendCounters(client statsd.Statter, counters map[string]int64) {
+	for counter, value := range counters {
+		client.Inc(counter, value, 1.0)
+	}
 }
 
 func parseGauges(info string) map[string]int64 {
@@ -97,6 +108,8 @@ func parseGauges(info string) map[string]int64 {
 		"used_memory_peak":          0,
 		"used_memory_rss":           0,
 	}
+	color.Yellow("-------------------")
+	color.White("GAUGES:")
 	for gauge, _ := range gauges_with_values {
 		r, _ := regexp.Compile(fmt.Sprint(gauge, ":([0-9]*)"))
 		matches := r.FindStringSubmatch(info)
@@ -110,4 +123,34 @@ func parseGauges(info string) map[string]int64 {
 		}
 	}
 	return gauges_with_values
+}
+
+func parseCounters(info string) map[string]int64 {
+	counters := map[string]int64{
+		"evicted_keys":               0,
+		"expired_keys":               0,
+		"keyspace_hits":              0,
+		"keyspace_misses":            0,
+		"rejected_connections":       0,
+		"sync_full":                  0,
+		"sync_partial_err":           0,
+		"sync_partial_ok":            0,
+		"total_commands_processed":   0,
+		"total_connections_received": 0,
+	}
+	color.Yellow("-------------------")
+	color.White("COUNTERS:")
+	for counter, _ := range counters {
+		r, _ := regexp.Compile(fmt.Sprint(counter, ":([0-9]*)"))
+		matches := r.FindStringSubmatch(info)
+		if matches == nil {
+			color.Red(fmt.Sprint("ERROR: ", counter, "is not displayed in redis info"))
+		} else {
+			value := matches[len(matches)-1]
+			color.Cyan(fmt.Sprint(counter, ": ", value))
+			v, _ := strconv.ParseInt(value, 10, 64)
+			counters[counter] = v
+		}
+	}
+	return counters
 }
