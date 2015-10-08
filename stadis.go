@@ -6,8 +6,14 @@ import (
 	"github.com/quipo/statsd"
 	"gopkg.in/redis.v3"
 	"os"
+	"regexp"
 	"time"
 )
+
+type gague struct {
+	Name  string
+	Value int64
+}
 
 func main() {
 	// init
@@ -15,6 +21,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "stadis"
 	app.Usage = "get redis info and submit to statsd"
+	app.HideHelp = true
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "redis-host, r",
@@ -33,7 +40,8 @@ func main() {
 		},
 	}
 	app.Action = func(c *cli.Context) {
-		getStats(c.String("redis-host"))
+		info := getStats(c.String("redis-host"))
+		parseGauges(info)
 	}
 	app.Run(os.Args)
 }
@@ -48,7 +56,7 @@ func getStats(addrs string) string {
 	if err != nil {
 		fmt.Println("Error connecting to redis") //possibly send to statsd also
 	}
-	fmt.Println(info)
+	//fmt.Println(info)
 	return info
 }
 
@@ -66,4 +74,29 @@ func sendStats() {
 	// buffered: aggregate in memory before flushing
 	stats.Incr("mymetric", 1)
 	stats.Incr("mymetric", 3)
+}
+func statify(info string) {
+}
+
+func parseGauges(info string) {
+	gauges := []string{
+		"blocked_clients",
+		"connected_clients",
+		"instantaneous_ops_per_sec",
+		"latest_fork_usec",
+		"mem_fragmentation_ratio",
+		"migrate_cached_sockets",
+		"pubsub_channels",
+		"pubsub_patterns",
+		"uptime_in_seconds",
+		"used_memory",
+		"used_memory_lua",
+		"used_memory_peak",
+		"used_memory_rss",
+	}
+	for _, gauge := range gauges {
+		r, _ := regexp.Compile(fmt.Sprint(gauge, ":([0-9]*)"))
+		value := r.FindStringSubmatch(info)[1]
+		fmt.Println(fmt.Sprint(gauge, ": ", value))
+	}
 }
