@@ -18,7 +18,6 @@ func main() {
 	app.Name = "stadis"
 	app.Version = "0.0.1"
 	app.Usage = "get redis info and submit to statsd"
-	app.HideHelp = true
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "redis-host, r",
