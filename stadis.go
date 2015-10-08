@@ -69,7 +69,7 @@ func getStats(addrs string) string {
 }
 
 func sendStats(statsdHost string, prefix string, gauges map[string]int64, counters map[string]int64) {
-	client, err := statsd.NewClient(statsdHost, "")
+	client, err := statsd.NewClient(statsdHost, prefix)
 	if err != nil {
 		color.Red("ERROR: can't connect to statsd")
 	}
