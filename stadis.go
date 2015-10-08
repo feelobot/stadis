@@ -7,16 +7,16 @@ import (
 	"gopkg.in/redis.v3"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 )
 
-type gague struct {
-	Name  string
-	Value int64
-}
+var prefix = os.Getenv("HOSTNAME")
+var statsdclient = statsd.NewStatsdClient("localhost:8125", prefix)
 
 func main() {
 	// init
+
 	cli.NewApp().Run(os.Args)
 	app := cli.NewApp()
 	app.Name = "stadis"
@@ -41,7 +41,8 @@ func main() {
 	}
 	app.Action = func(c *cli.Context) {
 		info := getStats(c.String("redis-host"))
-		parseGauges(info)
+		gauges := parseGauges(info)
+		sendGauges(gauges)
 	}
 	app.Run(os.Args)
 }
@@ -61,24 +62,24 @@ func getStats(addrs string) string {
 }
 
 func sendStats() {
-	prefix := os.Getenv("FOO")
-	statsdclient := statsd.NewStatsdClient("localhost:8125", prefix)
+}
+func sendGauges(gauges map[string]int64) {
 	statsdclient.CreateSocket()
 	interval := time.Second * 5 // aggregate stats and flush every 2 seconds
 	stats := statsd.NewStatsdBuffer(interval, statsdclient)
 	defer stats.Close()
 
-	// not buffered: send immediately
-	statsdclient.Incr("mymetric", 4)
+	for k, v := range gauges {
+		fmt.Println("k:", k, "v:", v)
+		stats.Gauge("k", v)
+	}
 
-	// buffered: aggregate in memory before flushing
-	stats.Incr("mymetric", 1)
-	stats.Incr("mymetric", 3)
 }
 func statify(info string) {
 }
 
-func parseGauges(info string) {
+func parseGauges(info string) map[string]int64 {
+	var gauges_with_values map[string]int64
 	gauges := []string{
 		"blocked_clients",
 		"connected_clients",
@@ -98,5 +99,8 @@ func parseGauges(info string) {
 		r, _ := regexp.Compile(fmt.Sprint(gauge, ":([0-9]*)"))
 		value := r.FindStringSubmatch(info)[1]
 		fmt.Println(fmt.Sprint(gauge, ": ", value))
+		v, _ := strconv.ParseInt(value, 10, 64)
+		gauges_with_values[gauge] = v
 	}
+	return gauges_with_values
 }
