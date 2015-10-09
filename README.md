@@ -59,3 +59,7 @@ total_connections_received: 3841
 evicted_keys: 0
 keyspace_misses: 330335235
 ```
+
+#PROPS
+
+thanks to https://github.com/keenlabs/redis-statsd for inspiration
