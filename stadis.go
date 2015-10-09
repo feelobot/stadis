@@ -46,7 +46,7 @@ func main() {
 			gauges := parseGauges(info)
 			counters := parseCounters(info)
 			sendStats(c.String("statsd-host"), c.String("prefix"), gauges, counters)
-			color.Yellow("-------------------")
+			color.White("-------------------")
 			interval, _ := strconv.ParseInt(c.String("interval"), 10, 64)
 			time.Sleep(time.Duration(interval) * time.Millisecond)
 		}
@@ -106,13 +106,13 @@ func parseGauges(info string) map[string]int64 {
 		"used_memory_peak":          0,
 		"used_memory_rss":           0,
 	}
-	color.Yellow("-------------------")
+	color.White("-------------------")
 	color.White("GAUGES:")
 	for gauge, _ := range gauges_with_values {
 		r, _ := regexp.Compile(fmt.Sprint(gauge, ":([0-9]*)"))
 		matches := r.FindStringSubmatch(info)
 		if matches == nil {
-			color.Red(fmt.Sprint("ERROR: ", gauge, "is not displayed in redis info"))
+			color.Yellow(fmt.Sprint("WARN: ", gauge, "is not displayed in redis info"))
 		} else {
 			value := matches[len(matches)-1]
 			color.Cyan(fmt.Sprint(gauge, ": ", value))
@@ -136,13 +136,13 @@ func parseCounters(info string) map[string]int64 {
 		"total_commands_processed":   0,
 		"total_connections_received": 0,
 	}
-	color.Yellow("-------------------")
+	color.White("-------------------")
 	color.White("COUNTERS:")
 	for counter, _ := range counters {
 		r, _ := regexp.Compile(fmt.Sprint(counter, ":([0-9]*)"))
 		matches := r.FindStringSubmatch(info)
 		if matches == nil {
-			color.Red(fmt.Sprint("ERROR: ", counter, "is not displayed in redis info"))
+			color.Yellow(fmt.Sprint("ERROR: ", counter, "is not displayed in redis info"))
 		} else {
 			value := matches[len(matches)-1]
 			color.Cyan(fmt.Sprint(counter, ": ", value))
