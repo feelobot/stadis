@@ -16,7 +16,7 @@ func main() {
 	// init
 	app := cli.NewApp()
 	app.Name = "stadis"
-	app.Version = "0.0.1"
+	app.Version = "0.0.2"
 	app.Usage = "get redis info and submit to statsd"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
